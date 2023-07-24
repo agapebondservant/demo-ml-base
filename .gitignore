@@ -1,3 +1,4 @@
 .env
 Dockerfile
 config/ml-image-processing-container.yaml
+config/workload.yaml
