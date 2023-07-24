@@ -4,7 +4,9 @@ from dotenv import load_dotenv
 import logging
 from datetime import datetime
 import os
-import sys
+import pandas as pd
+from sqlalchemy import create_engine
+import traceback
 
 load_dotenv()
 
@@ -34,9 +36,26 @@ class RandomForestMadlib(mlflow.pyfunc.PythonModel):
         return response
 
 
+# TODO: Refactor tracking logic!
 def publish():
     anomaly_detection_model = RandomForestMadlib()
+
     with mlflow.start_run() as run:
+        ################################################
+        # track relevant metrics
+        ################################################
+        try:
+            logging.error("about to track...")
+            metrics_data = _track_metrics()
+            mlflow.log_dict(metrics_data.to_dict(), 'importances.json')
+        except Exception as ee:
+            logging.error("An Exception occurred...", exc_info=True)
+            logging.error(str(ee))
+            logging.error(''.join(traceback.TracebackException.from_exception(ee).format()))
+
+        ################################################
+        # publish model
+        ################################################
         artifact_path = datetime.now().strftime("%m%d%Y%H%M%S")
         mlflow.pyfunc.log_model(artifact_path=artifact_path, python_model=anomaly_detection_model)
         model_path = f"runs:/{run.info.run_id}/{artifact_path}"
@@ -45,6 +64,15 @@ def publish():
             f"anomaly_detection",
             await_registration_for=None, )
         return model_path
+
+
+# TODO: Do not hardcode URI or query!
+def _track_metrics():
+    cnx = create_engine(os.getenv('DATA_E2E_DEMO_TRAINING_DB_URI'))
+    # Get variable importances
+    df = pd.read_sql_query("SELECT * FROM rf_credit_card_transactions_importances ORDER BY oob_var_importance DESC", cnx)
+    logging.error(df)
+    return df
 
 
 def _get_last_offset(region: str) -> int:
