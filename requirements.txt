@@ -44,4 +44,6 @@ pysqlite3-binary
 kfp
 download_and_extract
 altair==4.0
-.
+onnxruntime-gpu
+skl2onnx
+tf2onnx

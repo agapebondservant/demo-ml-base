@@ -1,4 +1,5 @@
 import mlflow
+from mlflow import MlflowClient
 import requests
 from dotenv import load_dotenv
 import logging
@@ -18,16 +19,16 @@ class RandomForestMadlib(mlflow.pyfunc.PythonModel):
 
     # TODO: Do not hardcode!
     # TODO: Integrate logic for retrieving the next training run
-    def load_gemfire_predictions(self):
+    def load_gemfire_predictions(self, model_input):
         training_run = _get_last_offset(region='mds_region_greenplum_offset')
 
         url = f'{_get_gemfire_api_endpoint()}/queries/adhoc'
 
         r = requests.get(url, params={
-            "q": f"select distinct md.id, md.amt, md.lat, md.is_fraud"
+            "q": f"select distinct id, amount, latitude, longitude, is_fraud_flag"
                  f" from /mds-region-greenplum "
-                 f" where md.id!=null and md.training_run_timestamp > {training_run}"
-                 f" order by md.id"
+                 f" where id!=null and training_run_timestamp > {training_run}"
+                 f" order by id"
                  f" limit 100"})
 
         # TODO: Set value of new offset
@@ -39,6 +40,7 @@ class RandomForestMadlib(mlflow.pyfunc.PythonModel):
 # TODO: Refactor tracking logic!
 def publish():
     anomaly_detection_model = RandomForestMadlib()
+    client = MlflowClient()
 
     with mlflow.start_run() as run:
         ################################################
@@ -54,21 +56,27 @@ def publish():
             logging.error(''.join(traceback.TracebackException.from_exception(ee).format()))
 
         ################################################
-        # publish model
+        # set tags
         ################################################
         artifact_path = datetime.now().strftime("%m%d%Y%H%M%S")
+        model_name = f"anomaly_detection_{artifact_path}"
+        client.set_registered_model_tag(model_name, 'group', 'anomaly_detection')
+
+        ################################################
+        # publish model
+        ################################################
         mlflow.pyfunc.log_model(artifact_path=artifact_path, python_model=anomaly_detection_model)
         model_path = f"runs:/{run.info.run_id}/{artifact_path}"
         mlflow.register_model(
             model_path,
-            f"anomaly_detection",
+            model_name,
             await_registration_for=None, )
         return model_path
 
 
 # TODO: Do not hardcode URI or query!
 def _track_metrics():
-    cnx = create_engine(os.getenv('DATA_E2E_DEMO_TRAINING_DB_URI'))
+    cnx = create_engine('postgresql://gpadmin:Uu4jcDSjqlDVQ@44.201.91.88:5432/dev?sslmode=require')
     # Get variable importances
     df = pd.read_sql_query("SELECT * FROM rf_credit_card_transactions_importances ORDER BY oob_var_importance DESC", cnx)
     logging.error(df)
