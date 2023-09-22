@@ -21,6 +21,11 @@ api_app.add_middleware(
 )
 
 
+@api_app.get("/")
+async def root():
+    return {"message": "Fraud Detection Analytics App (see /inference link)"}
+
+
 @api_app.post('/inference')
 async def predict(model_name, data):
     try:
@@ -30,7 +35,8 @@ async def predict(model_name, data):
 
         model_api_uri = f'{os.getenv("MLFLOW_TRACKING_URI")}/api/2.0/mlflow/registered-models/get?name={model_name}'
         models = requests.get(model_api_uri).json()
-        prod_model_name = next((x['name'] for x in models['registered_model']['latest_versions'] if x['current_stage'].lower() == 'production'), None)
+        prod_model_name = next((x['name'] for x in models['registered_model']['latest_versions'] if
+                                x['current_stage'].lower() == 'production'), None)
 
         if prod_model_name:
             logging.error(f"Found model {model_name} in Production stage...")
@@ -45,4 +51,3 @@ async def predict(model_name, data):
         logging.error("An Exception occurred...", exc_info=True)
         logging.error(str(ee))
     return "No production-ready model was found."
-
