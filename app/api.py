@@ -39,7 +39,7 @@ async def predict(model_name, data):
             unwrapped_model = loaded_model.unwrap_python_model()
             result = unwrapped_model.predict(data)
             logging.error(f"Result:\n{result}")
-    
+
             return result
     except Exception as ee:
         logging.error("An Exception occurred...", exc_info=True)
