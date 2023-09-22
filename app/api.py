@@ -23,7 +23,7 @@ api_app.add_middleware(
 
 @api_app.get("/")
 async def root():
-    return {"message": "Fraud Detection Analytics App (see /inference link)"}
+    return {"message": "Fraud Detection Analytics App (see /docs link)"}
 
 
 @api_app.post('/inference')
