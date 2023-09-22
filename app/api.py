@@ -43,7 +43,7 @@ async def predict(model_name, data):
 
             loaded_model = mlflow.pyfunc.load_model(model_uri=f"models:/{model_name}/Production")
             unwrapped_model = loaded_model.unwrap_python_model()
-            result = unwrapped_model.predict(data)
+            result = unwrapped_model.predict(None, data)
             logging.error(f"Result:\n{result}")
 
             return result
