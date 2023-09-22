@@ -7,8 +7,10 @@ import mlflow
 import os
 import requests
 from dotenv import load_dotenv
+from fastapi.staticfiles import StaticFiles
 
 api_app = FastAPI()
+api_app.mount("/static", StaticFiles(directory="static"), name="static")
 load_dotenv()
 
 # Enable CORS
@@ -51,3 +53,14 @@ async def predict(model_name, data):
         logging.error("An Exception occurred...", exc_info=True)
         logging.error(str(ee))
     return "No production-ready model was found."
+
+
+def generate_schema():
+    with open('app/static/openapi.json', 'w') as f:
+        json.dump(get_openapi(
+            title=api_app.title,
+            version=api_app.version,
+            openapi_version=api_app.openapi_version,
+            description=api_app.description,
+            routes=api_app.routes,
+        ), f, indent=4)
