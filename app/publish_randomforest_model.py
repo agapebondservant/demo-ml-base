@@ -166,7 +166,7 @@ def _track_metrics():
         "SELECT * FROM rf_credit_card_transactions_importances ORDER BY oob_var_importance DESC",
         cnx)
     df_oob_error = pd.read_sql_query(
-        "SELECT min(oob_error) FROM rf_credit_card_transactions_model_group",
+        "SELECT avg(oob_error) FROM rf_credit_card_transactions_model_group",
         cnx)
     logging.error(f"{df_importances} {df_oob_error}")
     return df_importances, df_oob_error
