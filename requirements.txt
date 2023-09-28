@@ -47,3 +47,4 @@ altair==4.0
 https://files.pythonhosted.org/packages/26/f5/5f0aaf4cbd0017258619a0bfe117e1263035bd501a480eead0799c140025/onnxruntime-1.16.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
 skl2onnx
 tf2onnx
+imbalanced-learn
