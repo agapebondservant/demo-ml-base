@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 from fastapi.staticfiles import StaticFiles
 
 api_app = FastAPI()
-api_app.mount("/app/static", StaticFiles(directory="static"), name="static")
+# api_app.mount("/app/static", StaticFiles(directory="static"), name="static")
 load_dotenv()
 
 # Enable CORS
