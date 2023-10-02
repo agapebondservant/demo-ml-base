@@ -11,6 +11,7 @@ import traceback
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from skl2onnx import to_onnx
+import pika
 
 load_dotenv()
 
@@ -158,6 +159,17 @@ def publish(model, model_name_prefix):
         return model_path
 
 
+def notify_completion():
+    connection = pika.BlockingConnection(pika.ConnectionParameters(
+        host=os.getenv('rmq_host'),
+        credentials=pika.PlainCredentials(os.getenv('rmq_user'), os.getenv('rmq_password'))))
+    channel = connection.channel()
+    channel.basic_publish(exchange='fraud-detection-global',
+                          routing_key='downstream.randomforest.madlib',
+                          body='{"message": "sync"}')
+
+
+
 # TODO: Do not hardcode URI or query!
 def _track_metrics():
     cnx = create_engine('postgresql://gpadmin:Uu4jcDSjqlDVQ@44.201.91.88:5432/dev?sslmode=require')
@@ -200,3 +212,4 @@ def _get_gemfire_api_endpoint():
 publish_streaming_model()
 publish_single_record_model()
 publish_single_record_model_onnx()
+notify_completion()
