@@ -145,7 +145,6 @@ def publish(model, model_name_prefix):
         # set tags
         ################################################
         model_name = f"{model_name_prefix}_{artifact_path}"
-        client.set_registered_model_tag(model_name, 'group', 'anomaly_detection')
 
         ################################################
         # publish model
@@ -156,6 +155,7 @@ def publish(model, model_name_prefix):
             model_path,
             model_name,
             await_registration_for=None, )
+        client.set_registered_model_tag(model_name, 'group', 'anomaly_detection')
         return model_path
 
 
