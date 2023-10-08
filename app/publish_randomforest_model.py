@@ -160,6 +160,8 @@ def publish(model, model_name_prefix):
 
 
 def notify_completion():
+    logging.info(f"Sending notification of model training completion to {os.getenv('rmq_host')} - "
+                 f"creds {os.getenv('rmq_user')}, {os.getenv('rmq_password')}...")
     connection = pika.BlockingConnection(pika.ConnectionParameters(
         host=os.getenv('rmq_host'),
         credentials=pika.PlainCredentials(os.getenv('rmq_user'), os.getenv('rmq_password'))))
