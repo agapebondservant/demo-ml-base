@@ -116,7 +116,7 @@ def publish_single_record_model():
 # TODO: Refactor tracking logic!
 # TODO: Do not hardcode URI or query!
 def publish_single_record_model_onnx():
-    model = RandomForestMadlib()
+    model = RandomForestMadlibOnnx()
     return publish(model, 'anomaly_detection_onnx')
 
 
@@ -142,19 +142,20 @@ def publish(model, model_name_prefix):
             logging.error(''.join(traceback.TracebackException.from_exception(ee).format()))
 
         ################################################
-        # set tags
-        ################################################
-        model_name = f"{model_name_prefix}_{artifact_path}"
-
-        ################################################
         # publish model
         ################################################
+        model_name = f"{model_name_prefix}_{artifact_path}"
         mlflow.pyfunc.log_model(artifact_path=artifact_path, python_model=model)
         model_path = f"runs:/{run.info.run_id}/{artifact_path}"
         mlflow.register_model(
             model_path,
             model_name,
             await_registration_for=None, )
+
+        ################################################
+        # set tags
+        ################################################
+        mlflow.set_tag('type', model_name_prefix)
         client.set_registered_model_tag(model_name, 'group', 'anomaly_detection')
         return model_path
 
