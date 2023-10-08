@@ -166,10 +166,9 @@ def notify_completion():
         host=os.getenv('rmq_host'),
         credentials=pika.PlainCredentials(os.getenv('rmq_user'), os.getenv('rmq_password'))))
     channel = connection.channel()
-    channel.basic_publish(exchange='fraud-detection-global',
+    channel.basic_publish(exchange='mds-fraud-transactions-exchange-global',
                           routing_key='downstream.randomforest.madlib',
                           body='{"message": "sync"}')
-
 
 
 # TODO: Do not hardcode URI or query!
