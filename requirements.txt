@@ -49,3 +49,4 @@ skl2onnx
 tf2onnx
 imbalanced-learn
 pika
+acryl-datahub[datahub-rest]

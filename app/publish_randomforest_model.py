@@ -11,6 +11,8 @@ import traceback
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from skl2onnx import to_onnx
+import app.notifications
+import app.publish_metadata
 import pika
 
 load_dotenv()
@@ -47,14 +49,12 @@ class RandomForestMadlib(mlflow.pyfunc.PythonModel):
         logging.info(f"Running prediction for inputs={model_input}...")
         return self.run_inference(model_input)
 
-    # TODO: Do not hardcode!
     # TODO: Use network local address instead of Loadbalancer FQDN for db connection (for performance reasons)
     # TODO: Integrate logic for retrieving the next training run
     # TODO: Include error handling
     def run_inference(self, model_input):
         inference_function_name = 'run_random_forest_prediction'
-        cnx = create_engine(
-            'postgresql://postgres:postgres@aa28023c2f2614eb188934e99167ce65-1434640867.us-east-1.elb.amazonaws.com:5432/postgres')
+        cnx = create_engine(os.getenv('inference_db_uri_full'))
         df = pd.read_sql_query(
             f"SELECT {inference_function_name}({model_input[0]}, {model_input[1]}, {model_input[2]}, {model_input[3]})",
             cnx)
@@ -68,7 +68,7 @@ class RandomForestMadlib(mlflow.pyfunc.PythonModel):
 # TODO: Include error handling
 class RandomForestMadlibOnnx(mlflow.pyfunc.PythonModel):
     def __init__(self):
-        cnx = create_engine('postgresql+psycopg2://gpadmin:Uu4jcDSjqlDVQ@44.201.91.88:5432/dev')
+        cnx = create_engine(os.getenv('training_db_uri_full'))
         df = pd.read_sql_query(f"select * from \"rf_credit_card_transactions_training\"", cnx)
         X, y = df[["time_elapsed", "amt", "lat", "long"]].to_numpy(), df[["is_fraud"]].to_numpy()
         X_train, X_test, y_train, y_test = train_test_split(X, y)
@@ -107,14 +107,12 @@ def publish_streaming_model():
 
 
 # TODO: Refactor tracking logic!
-# TODO: Do not hardcode URI or query!
 def publish_single_record_model():
     model = RandomForestMadlib()
     return publish(model, 'anomaly_detection')
 
 
 # TODO: Refactor tracking logic!
-# TODO: Do not hardcode URI or query!
 def publish_single_record_model_onnx():
     model = RandomForestMadlibOnnx()
     return publish(model, 'anomaly_detection_onnx')
@@ -153,6 +151,17 @@ def publish(model, model_name_prefix):
             await_registration_for=None, )
 
         ################################################
+        # publish metadata
+        ################################################
+        try:
+            app.publish_metadata.publish_postgres_training_db()
+            app.publish_metadata.publish_inference_training_db()
+        except Exception as ee:
+            logging.error("An Exception occurred...", exc_info=True)
+            logging.error(str(ee))
+            logging.error(''.join(traceback.TracebackException.from_exception(ee).format()))
+
+        ################################################
         # set tags
         ################################################
         mlflow.set_tag('type', model_name_prefix)
@@ -160,21 +169,15 @@ def publish(model, model_name_prefix):
         return model_path
 
 
+# TODO: Do not hardcode query!
 def notify_completion():
-    logging.info(f"Sending notification of model training completion to {os.getenv('rmq_host')} - "
-                 f"creds {os.getenv('rmq_user')}, {os.getenv('rmq_password')}...")
-    connection = pika.BlockingConnection(pika.ConnectionParameters(
-        host=os.getenv('rmq_host'),
-        credentials=pika.PlainCredentials(os.getenv('rmq_user'), os.getenv('rmq_password'))))
-    channel = connection.channel()
-    channel.basic_publish(exchange='mds-fraud-transactions-exchange-global',
-                          routing_key='downstream.randomforest.madlib',
-                          body='{"message": "sync"}')
+    logging.info(f"Sending notification of model training completion to {os.getenv('rmq_host')}...")
+    app.notifications.send_argo_event('{"message": "sync"}')
 
 
-# TODO: Do not hardcode URI or query!
+# TODO: Do not hardcode query!
 def _track_metrics():
-    cnx = create_engine('postgresql://gpadmin:Uu4jcDSjqlDVQ@44.201.91.88:5432/dev?sslmode=require')
+    cnx = create_engine(os.getenv('training_db_uri_full'))
     # Get variable importances
     df_importances = pd.read_sql_query(
         "SELECT * FROM rf_credit_card_transactions_importances ORDER BY oob_var_importance DESC",

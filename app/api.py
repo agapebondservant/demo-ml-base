@@ -44,8 +44,8 @@ async def predict(model_name, data):
             logging.error(f"Found model {model_name} in Production stage...")
 
             loaded_model = mlflow.pyfunc.load_model(model_uri=f"models:/{model_name}/Production")
-            unwrapped_model = loaded_model.unwrap_python_model()
-            result = unwrapped_model.predict(data)
+            # unwrapped_model = loaded_model.unwrap_python_model()
+            result = loaded_model.predict(data)
             logging.error(f"Result:\n{result}")
 
             return result
