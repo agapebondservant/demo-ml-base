@@ -156,6 +156,7 @@ def publish(model, model_name_prefix):
         try:
             app.publish_metadata.publish_postgres_training_db()
             app.publish_metadata.publish_inference_training_db()
+            app.publish_metadata.publish_gemfire_inference_db()
         except Exception as ee:
             logging.error("An Exception occurred...", exc_info=True)
             logging.error(str(ee))
