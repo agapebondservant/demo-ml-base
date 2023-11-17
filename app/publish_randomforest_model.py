@@ -11,8 +11,8 @@ import traceback
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from skl2onnx import to_onnx
-import app.notifications
-import app.publish_metadata
+import notifications
+import publish_metadata
 import pika
 
 load_dotenv()
@@ -75,6 +75,11 @@ class RandomForestMadlibOnnx(mlflow.pyfunc.PythonModel):
         model = RandomForestClassifier(random_state=1, n_estimators=5, class_weight='balanced')
         model.fit(X_train, y_train)
         self.model = model
+
+        ################################################
+        # log explanations
+        ################################################
+        # mlflow.shap.log_explanation(model.predict, X_train)
 
         onx = to_onnx(self.model, X[:1])
         artifact_name = "rf_fraud.onnx"
@@ -154,9 +159,9 @@ def publish(model, model_name_prefix):
         # publish metadata
         ################################################
         try:
-            app.publish_metadata.publish_postgres_training_db()
-            app.publish_metadata.publish_inference_training_db()
-            app.publish_metadata.publish_gemfire_inference_db()
+            publish_metadata.publish_postgres_training_db()
+            publish_metadata.publish_inference_training_db()
+            publish_metadata.publish_gemfire_inference_db()
         except Exception as ee:
             logging.error("An Exception occurred...", exc_info=True)
             logging.error(str(ee))
@@ -165,7 +170,13 @@ def publish(model, model_name_prefix):
         ################################################
         # set tags
         ################################################
+        prior_runs = mlflow.search_runs(
+            filter_string=f"tags.latest = 'true' AND tags.type = '{model_name_prefix}'",
+            output_format='list')
+        for prior_run in prior_runs:
+            client.delete_tag(prior_run.info.run_id, 'latest')
         mlflow.set_tag('type', model_name_prefix)
+        mlflow.set_tag('latest', 'true')
         client.set_registered_model_tag(model_name, 'group', 'anomaly_detection')
         return model_path
 
@@ -173,7 +184,10 @@ def publish(model, model_name_prefix):
 # TODO: Do not hardcode query!
 def notify_completion():
     logging.info(f"Sending notification of model training completion to {os.getenv('rmq_host')}...")
-    app.notifications.send_argo_event('{"message": "sync"}')
+    prior_runs = mlflow.search_runs(
+        filter_string=f"tags.latest = 'true' AND tags.type ILIKE 'anomaly_detection%'",
+        output_format='list')
+    notifications.send_argo_event('{"message": "sync"}')
 
 
 # TODO: Do not hardcode query!
