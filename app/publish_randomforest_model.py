@@ -55,6 +55,7 @@ class RandomForestMadlib(mlflow.pyfunc.PythonModel):
     def run_inference(self, model_input):
         inference_function_name = 'run_random_forest_prediction'
         cnx = create_engine(os.getenv('inference_db_uri_full'))
+        logging.error(f"Training db is {os.getenv('training_db_uri_full')}")
         df = pd.read_sql_query(
             f"SELECT {inference_function_name}({model_input[0]}, {model_input[1]}, {model_input[2]}, {model_input[3]})",
             cnx)
@@ -69,6 +70,7 @@ class RandomForestMadlib(mlflow.pyfunc.PythonModel):
 class RandomForestMadlibOnnx(mlflow.pyfunc.PythonModel):
     def __init__(self):
         cnx = create_engine(os.getenv('training_db_uri_full'))
+        logging.error(f"Training db is {os.getenv('training_db_uri_full')}")
         df = pd.read_sql_query(f"select * from \"rf_credit_card_transactions_training\"", cnx)
         X, y = df[["time_elapsed", "amt", "lat", "long"]].to_numpy(), df[["is_fraud"]].to_numpy()
         X_train, X_test, y_train, y_test = train_test_split(X, y)
