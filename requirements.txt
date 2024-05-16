@@ -33,7 +33,7 @@ tensorflow
 rsocket
 # asyncio
 python-snappy
-mlflow==2.4.1
+mlflow==2.12.2
 filelock==3.9.0
 pyarrow<7.0.0
 hickle
